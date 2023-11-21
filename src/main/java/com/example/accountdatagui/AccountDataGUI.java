@@ -77,7 +77,7 @@ public class AccountDataGUI extends Application {
             passwordBox.getChildren().addAll(passwordLabel, passwordTextField);
 
             // Button to check account and password
-            Button checkButton = new Button("Check Account");
+            Button checkButton = new Button("Lookup Account");
             checkButton.setOnAction(e -> checkAccount(accountNumberTextField.getText(), passwordTextField.getText()));
 
             //Security Question Label
@@ -117,10 +117,13 @@ public class AccountDataGUI extends Application {
             VBox vbox = new VBox(10);
             vbox.setAlignment(Pos.CENTER); //Center content horizontally
             vbox.setPadding(new Insets(20, 20, 20, 20));
+
             //Add all labels buttons etc to VBOX
             vbox.getChildren().addAll(welcomeLabel, fileOpenerButton, accountNumberBox, passwordBox, checkButton,
                     securityQuestionLabel, securityQuestionTextField, checkSecurityQuestionButton, accountInfoTextArea,
                     buttonBox);
+
+            //Set Scene
             Scene scene = new Scene(vbox, 600, 450);
             primaryStage.setScene(scene);
             primaryStage.show();
@@ -165,26 +168,102 @@ public class AccountDataGUI extends Application {
     }
     private void checkAccount(String enteredAccountNumber, String enteredPassword) {
         boolean accountFound = false;
-        //if the accounts array list isnt empty
-        if (accounts != null) {
-            //For each account object in the account array list
-            for (Account account : accounts) {
-                if (account.getAcctNumber() == Integer.parseInt(enteredAccountNumber)
-                        && account.getHashedPassword().equals(enteredPassword)) {
-                    System.out.println("Account Found: " + account.toString());
-                    showSecurityQuestion(account.getSecurityQuestion());
-                    accountFound = true;
-                    break;
-                }
+        try {
+            // Check if the account number is empty
+            if (enteredAccountNumber.trim().isEmpty()) {
+                throw new ExceptionHandling.EmptyAcctIdException("Account number cannot be empty");
             }
-            if(!accountFound) {
-                System.out.println("Account not found or incorrect password");
+
+            // Check if the account number is negative
+            int accountNumber = Integer.parseInt(enteredAccountNumber);
+            if (accountNumber < 0) {
+                throw new ExceptionHandling.NegativeAcctIDException("Error account number cannot be negative: " + accountNumber);
+            }
+
+            // Check if the password is empty
+            if (enteredPassword.trim().isEmpty()) {
+                throw new ExceptionHandling.EmptyPasswordException("Password cannot be empty");
+            }
+
+            // Logic to actually check accounts
+            if (accounts != null) {
+                for (Account account : accounts) {
+                    if(account.getAcctNumber() == accountNumber) {
+                        if ( account.getHashedPassword().equals(enteredPassword)) {
+                        System.out.println("Account Found: " + account.toString());
+                        showSecurityQuestion(account.getSecurityQuestion());
+                        accountFound = true;
+                        break;
+                    } else {
+                            //If the password doesn't match throw this exception
+                            throw new ExceptionHandling.InvalidPasswordException("The Password You entered is incorrect");
+                        }
+                    }
+                }
+                //If you can't find the account and all other info is right. Password is wrong
+                if (!accountFound) {
+                    throw new ExceptionHandling.InvalidAccountException("Error Account Number Not Found: " + accountNumber);
+                }
+            } else {
+                System.out.println("Please open a file first.");
                 hideSecurityQuestion();
             }
-        } else {
-            System.out.println("Please open a file first.");
-            hideSecurityQuestion();
+
+        } catch (ExceptionHandling.EmptyAcctIdException | ExceptionHandling.NegativeAcctIDException | ExceptionHandling.EmptyPasswordException | ExceptionHandling.InvalidAccountException | ExceptionHandling.InvalidPasswordException e) {
+            // Display the error message
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Exception Handling Error", JOptionPane.ERROR_MESSAGE);
+            // Set focus based on the exception type
+            if (e instanceof ExceptionHandling.EmptyAcctIdException || e instanceof ExceptionHandling.NegativeAcctIDException) {
+                accountNumberTextField.requestFocus();
+            } else {
+                passwordTextField.requestFocus();
+            }
         }
+
+
+
+//        //Check if the entered account number is empty
+//        if(enteredAccountNumber.trim().isEmpty()) {
+//            try {
+//                throw new ExceptionHandling.EmptyAcctIdException("ERROR CLASS 2: Empty Account Number Exception\n");
+//            } catch (ExceptionHandling.EmptyAcctIdException e) {
+//                //Display the error message to the user
+//                JOptionPane.showMessageDialog(null, e.getMessage() + "Account Field Blank Please Try Again", "EMPTYACCTIDERROR", JOptionPane.ERROR_MESSAGE);
+//                //Set focus to account number text field
+//                accountNumberTextField.requestFocus();
+//                return;
+//            }
+//        }
+//
+//        try {
+//            //Check if the account number is negative
+//            int accountNumber = Integer.parseInt(enteredAccountNumber);
+//            if (accountNumber < 0){
+//                throw new ExceptionHandling.NegativeAcctIDException("Error Account Number Cannot be Negative: " + accountNumber);
+//            }
+//            if (accounts != null) {
+//                //For each account object in the account array list
+//                for (Account account : accounts) {
+//                    if (account.getAcctNumber() == Integer.parseInt(enteredAccountNumber)
+//                            && account.getHashedPassword().equals(enteredPassword)) {
+//                        System.out.println("Account Found: " + account.toString());
+//                        showSecurityQuestion(account.getSecurityQuestion());
+//                        accountFound = true;
+//                        break;
+//                    }
+//                }
+//                if(!accountFound) {
+//                    throw new ExceptionHandling.InvalidAccountException("Error Account Number Not Found: " + accountNumber);
+//                }
+//            } else {
+//                System.out.println("Please open a file first.");
+//                hideSecurityQuestion();
+//            }
+//        } catch (ExceptionHandling.NegativeAcctIDException | ExceptionHandling.InvalidAccountException e) {
+//            JOptionPane.showMessageDialog(null, e.getMessage(), "Account Identification Error", JOptionPane.ERROR_MESSAGE);
+//            hideSecurityQuestion();
+//            accountNumberTextField.requestFocus();
+//        }
     }
 
     private void showSecurityQuestion(String question) {
@@ -204,7 +283,7 @@ public class AccountDataGUI extends Application {
         if (accounts != null &&!accounts.isEmpty()) {
             String enteredAccountNumber = accountNumberTextField.getText();
             String enteredPassword = passwordTextField.getText();
-
+        try {
             Account currentAccount = null;
             //This finds the account with the entered account number and password
             for (Account account : accounts) {
@@ -216,18 +295,22 @@ public class AccountDataGUI extends Application {
             }
             if (currentAccount != null) {
                 String enteredAnswer = securityQuestionTextField.getText();
-                //If the current account objects security question attribute equals user input
-                if (currentAccount.getSecurityAnswer().equals(enteredAnswer)) {
+                //Check if the security question answer box is empty
+                if(enteredAnswer.trim().isEmpty()){
+                    throw new ExceptionHandling.EmptySQAnswerException("Security Question Answer Cannot Be Empty.");
+                }
+                //Check if the security answer is valid
+                if(!(currentAccount.getSecurityAnswer().equals(enteredAnswer))){
+                    throw new ExceptionHandling.InvalidSQAnswerException("Security Question Answer is Not correct.(CASE SENSITIVE)");
+                } else {
                     System.out.println("Security Question Answer is correct.");
                     updateAndDisplayAccountInfo(currentAccount);
-                } else {
-                    System.out.println("Incorrect Security Question Answer");
                 }
-            } else {
-                System.out.println("Account not found or incorrect password");
             }
-        } else {
-            System.out.println("Please open a file first");
+        } catch (ExceptionHandling.EmptySQAnswerException | ExceptionHandling.InvalidSQAnswerException e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Security Exception Handling Error", JOptionPane.ERROR_MESSAGE);
+            securityQuestionTextField.requestFocus();
+            }
         }
     }
 
@@ -235,18 +318,27 @@ public class AccountDataGUI extends Application {
         //Format the balance in currency format. Using US DOLLARS
         NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
         String formattedBalance = currencyFormat.format(account.getAccountBalance());
-
+        char accountStatus = account.getAccountStatus();
+        try{
+            if(accountStatus != 'A'&& accountStatus != 'a' && accountStatus != 'D' && accountStatus != 'd' && accountStatus != 'C' && accountStatus != 'c') {
+            throw new ExceptionHandling.InvalidStatusException("Invalid Account Status" + accountStatus);
+        }
         //Display status of account based on switch statement
-        String statusDescription = switch (account.getAccountStatus()) {
-            case 'A' -> "Active and in good standing.";
-            case 'D' -> "Delinquent and not in good standing.";
-            case 'C' -> "Account closed.";
+        String statusDescription = switch (accountStatus) {
+            case 'A', 'a' -> "Active and in good standing.";
+            case 'D', 'd' -> "Delinquent and not in good standing.";
+            case 'C', 'c' -> "Account closed.";
             default -> "Unknown status";
         };
         accountInfoTextArea.setVisible(true);
         accountInfoTextArea.setText("Your Personal Account information\n" +"Balance: " + formattedBalance + "\n" +
                 "Status: " + statusDescription + "\n" +
                 "Credit Limit: " + currencyFormat.format(account.getAccountLimit()));
+        } catch (ExceptionHandling.InvalidStatusException e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Invalid Status Exception Handling Error", JOptionPane.ERROR_MESSAGE);
+            clearForm(); //Clear any displayed values
+            accountNumberTextField.requestFocus();
+        }
     }
 
     //This method clears all the contents of all controls and hides private security information
